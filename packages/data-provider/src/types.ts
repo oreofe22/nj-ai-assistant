@@ -310,6 +310,13 @@ export type TArchiveConversationRequest = {
 
 export type TArchiveConversationResponse = TConversation;
 
+export type TPinConversationRequest = {
+  conversationId: string;
+  pinned: boolean;
+};
+
+export type TPinConversationResponse = TConversation;
+
 export type TSharedMessagesResponse = Omit<TSharedLink, 'messages'> & {
   messages: TMessage[];
 };
