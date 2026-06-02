@@ -168,6 +168,7 @@ export default function Conversation({
 
   const convoOptionsProps = {
     title,
+    isPinned: conversation.pinned,
     retainView,
     renameHandler: handleRename,
     isActiveConvo,
