@@ -6,6 +6,7 @@ import { useToastContext, useMediaQuery } from '@librechat/client';
 import type { TConversation } from 'librechat-data-provider';
 import { useUpdateConversationMutation } from '~/data-provider';
 import EndpointIcon from '~/components/Endpoints/EndpointIcon';
+import { Pin } from 'lucide-react';
 import { useNavigateToConvo, useLocalize, useShiftKey } from '~/hooks';
 import { useGetEndpointsQuery } from '~/data-provider';
 import { NotificationSeverity } from '~/common';
@@ -267,6 +268,9 @@ export default function Conversation({
           )}
           */}
         </ConvoLink>
+      )}
+      {conversation.pinned === true && (
+        <Pin className="icon-sm mr-1 shrink-0 text-text-primary" aria-hidden="true" />
       )}
       <div
         className={cn(

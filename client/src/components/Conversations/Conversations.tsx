@@ -95,6 +95,19 @@ const ChatsHeader: FC<ChatsHeaderProps> = memo(({ isExpanded, onToggle }) => {
 
 ChatsHeader.displayName = 'ChatsHeader';
 
+const PinnedHeader: FC = memo(() => {
+  const localize = useLocalize();
+  return (
+    <div className="flex w-full items-center px-1 py-2">
+      <span className="select-none text-xs font-bold text-text-secondary">
+        {localize('com_ui_pinned')}
+      </span>
+    </div>
+  );
+});
+
+PinnedHeader.displayName = 'PinnedHeader';
+
 const DateLabel: FC<{ groupName: string; isFirst?: boolean }> = memo(({ groupName, isFirst }) => {
   const localize = useLocalize();
   return (
@@ -116,6 +129,8 @@ DateLabel.displayName = 'DateLabel';
 
 type FlattenedItem =
   | { type: 'favorites' }
+  | { type: 'pinned-header' }
+  | { type: 'pinned-convo'; convo: TConversation }
   | { type: 'chats-header' }
   | { type: 'header'; groupName: string }
   | { type: 'convo'; convo: TConversation }
@@ -147,6 +162,7 @@ const MemoizedConvo = memo(
       prevProps.conversation.conversationId === nextProps.conversation.conversationId &&
       prevProps.conversation.title === nextProps.conversation.title &&
       prevProps.conversation.endpoint === nextProps.conversation.endpoint &&
+      prevProps.conversation.pinned === nextProps.conversation.pinned &&
       prevProps.isGenerating === nextProps.isGenerating
     );
   },
@@ -190,6 +206,11 @@ const Conversations: FC<ConversationsProps> = ({
     [rawConversations],
   );
 
+  const pinnedConversations = useMemo(
+    () => filteredConversations.filter((c) => c.pinned),
+    [filteredConversations],
+  );
+
   const groupedConversations = useMemo(
     () => groupConversationsByDate(filteredConversations),
     [filteredConversations],
@@ -200,6 +221,10 @@ const Conversations: FC<ConversationsProps> = ({
     // Only include favorites row if FavoritesList will render content
     if (shouldShowFavorites) {
       items.push({ type: 'favorites' });
+    }
+    if (!search.query && pinnedConversations.length > 0) {
+      items.push({ type: 'pinned-header' });
+      items.push(...pinnedConversations.map((convo) => ({ type: 'pinned-convo' as const, convo })));
     }
     items.push({ type: 'chats-header' });
 
@@ -214,7 +239,14 @@ const Conversations: FC<ConversationsProps> = ({
       }
     }
     return items;
-  }, [groupedConversations, isLoading, isChatsExpanded, shouldShowFavorites]);
+  }, [
+    groupedConversations,
+    pinnedConversations,
+    isLoading,
+    isChatsExpanded,
+    shouldShowFavorites,
+    search.query,
+  ]);
 
   // Store flattenedItems in a ref for keyMapper to access without recreating cache
   const flattenedItemsRef = useRef(flattenedItems);
@@ -233,6 +265,12 @@ const Conversations: FC<ConversationsProps> = ({
           }
           if (item.type === 'favorites') {
             return `favorites-${favoritesContentKeyRef.current}`;
+          }
+          if (item.type === 'pinned-header') {
+            return 'pinned-header';
+          }
+          if (item.type === 'pinned-convo') {
+            return `pinned-${item.convo.conversationId}`;
           }
           if (item.type === 'chats-header') {
             return 'chats-header';
@@ -299,6 +337,14 @@ const Conversations: FC<ConversationsProps> = ({
         );
       }
 
+      if (item.type === 'pinned-header') {
+        return (
+          <MeasuredRow key={key} {...rowProps}>
+            <PinnedHeader />
+          </MeasuredRow>
+        );
+      }
+
       if (item.type === 'chats-header') {
         return (
           <MeasuredRow key={key} {...rowProps}>
@@ -310,11 +356,25 @@ const Conversations: FC<ConversationsProps> = ({
         );
       }
 
+      if (item.type === 'pinned-convo') {
+        const isGenerating = activeJobIds.has(item.convo.conversationId ?? '');
+        return (
+          <MeasuredRow key={key} {...rowProps}>
+            <MemoizedConvo
+              conversation={item.convo}
+              retainView={moveToTop}
+              toggleNav={toggleNav}
+              isGenerating={isGenerating}
+            />
+          </MeasuredRow>
+        );
+      }
+
       if (item.type === 'header') {
-        // First date header index depends on whether favorites row is included
-        // With favorites: [favorites, chats-header, first-header] → index 2
-        // Without favorites: [chats-header, first-header] → index 1
-        const firstHeaderIndex = shouldShowFavorites ? 2 : 1;
+        // First date header index depends on favorites row, pinned header, and pinned convos
+        // At most: [favorites, pinned-header, # pinned-convos, chats-header] → first-header
+        const pinnedOffset = pinnedConversations.length > 0 ? pinnedConversations.length + 1 : 0;
+        const firstHeaderIndex = (shouldShowFavorites ? 2 : 1) + pinnedOffset;
         return (
           <MeasuredRow key={key} {...rowProps}>
             <DateLabel groupName={item.groupName} isFirst={index === firstHeaderIndex} />
@@ -347,6 +407,7 @@ const Conversations: FC<ConversationsProps> = ({
       isChatsExpanded,
       setIsChatsExpanded,
       shouldShowFavorites,
+      pinnedConversations,
       activeJobIds,
     ],
   );
