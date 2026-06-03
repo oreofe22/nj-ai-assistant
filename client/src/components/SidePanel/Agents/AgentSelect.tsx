@@ -2,6 +2,7 @@ import { EarthIcon } from 'lucide-react';
 import { ControlCombobox } from '@librechat/client';
 import { memo, useCallback, useEffect, useRef } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
+import type { ResetOptions } from 'react-hook-form';
 import { AgentCapabilities, defaultAgentFormValues } from 'librechat-data-provider';
 import type { UseMutationResult, QueryObserverResult } from '@tanstack/react-query';
 import type { Agent, AgentCreateParams } from 'librechat-data-provider';
@@ -44,7 +45,7 @@ function AgentSelect({
   );
 
   const resetAgentForm = useCallback(
-    (fullAgent: Agent) => {
+    (fullAgent: Agent, options?: ResetOptions) => {
       const isGlobal = fullAgent.isPublic ?? false;
       const update = {
         ...fullAgent,
@@ -149,7 +150,7 @@ function AgentSelect({
         }
       });
 
-      reset(formValues);
+      reset(formValues, options);
     },
     [reset],
   );
@@ -180,7 +181,7 @@ function AgentSelect({
 
   useEffect(() => {
     if (agentQuery.data && agentQuery.isSuccess) {
-      resetAgentForm(agentQuery.data);
+      resetAgentForm(agentQuery.data, { keepDirtyValues: true });
     }
   }, [agentQuery.data, agentQuery.isSuccess, resetAgentForm]);
 
